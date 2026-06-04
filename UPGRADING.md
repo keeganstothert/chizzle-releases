@@ -320,6 +320,28 @@ _(Optional narrative paragraph for anything that doesn't fit above.)_
 
 <!-- BEGIN RELEASE NOTES -->
 
+### v0.4.5 — 2026-06-04
+
+In-app update check now works on private-source deployments. The server's
+"is there a newer release?" probe used to hit the source repo's
+`releases/latest` anonymously; once the source repo went private that
+404'd and the update banner never appeared. Release *metadata* (tags +
+Releases + this runbook) is now published to a separate **public** repo
+(`keeganstothert/chizzle-releases`); the probe targets it
+(env-overridable via `CHIZZLE_RELEASES_REPO`, defaulting to the public
+repo) so it stays anonymous and token-free. Container images are
+unchanged — still signed on GHCR, pulled with `docker login`. Also fixes
+`deploy/update.sh` writing a `v`-prefixed `CHIZZLE_VERSION` that didn't
+match the bare GHCR image tags. Server + tooling only.
+
+**Migrations:** none.
+**Config:** unchanged. New optional `CHIZZLE_RELEASES_REPO` env (defaults
+to `keeganstothert/chizzle-releases`); leave unset for the standard
+deployment.
+**Persona layout:** unchanged.
+**Compose:** unchanged.
+**Rollback:** standard §4 procedure.
+
 ### v0.4.4 — 2026-06-04
 
 Persona turn capabilities. Every chat turn and cold-open now carries a
