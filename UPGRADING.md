@@ -320,6 +320,37 @@ _(Optional narrative paragraph for anything that doesn't fit above.)_
 
 <!-- BEGIN RELEASE NOTES -->
 
+### v0.4.6 — 2026-06-06
+
+Turnkey proactive push — a closed iOS app now wakes for a persona's
+proactive message with **zero config**. Previously a self-hosted server
+could only reach a *foregrounded* app or fall back to Telegram; APNs was
+never turned on because there was no chizzle-operated relay and no way for
+an arbitrary self-hoster to authorize against a shared one. This release
+ships both: the chizzle-operated push-relay is real multi-tenant infra,
+and the server **auto-enrolls** against it on first boot and persists the
+enrollment token to config — the operator sets nothing. A relay token only
+ever wakes device tokens the backend already holds via pairing, so open
+enrollment can't wake strangers' phones; resource abuse is bounded by
+per-backend, per-device, global, and per-IP caps. APNs `Unregistered`
+device tokens are pruned automatically. Also hardens proactive events: a
+re-fire circuit breaker plus surfaced DB-write errors stop the wakeup
+flood where a disk-full graph DB silently dropped the delivery mark and an
+event re-fired ~100× (2026-06-05).
+
+**Migrations:** none.
+**Config:** proactive push is now **default-on**. On first boot the server
+self-enrolls against the shared relay (`DEFAULT_PUSH_RELAY_URL`) and writes
+a `[push_relay]` block (backend id + token) to `config.toml` — additive,
+backward-compatible, reused on restart. The old "`PUSH_RELAY_URL` set +
+secret unset = hard error" is gone. Opt out with `PUSH_RELAY_DISABLE=1`
+(or `[push_relay] disabled = true`). Self-hosters operating their *own*
+relay set `PUSH_RELAY_URL` to it; see `deploy/fly/relay/README.md`.
+**Persona layout:** unchanged.
+**Compose:** unchanged.
+**Rollback:** standard §4 procedure. The `[push_relay]` config block is
+inert to older binaries; no down-migration needed.
+
 ### v0.4.5 — 2026-06-04
 
 In-app update check now works on private-source deployments. The server's
