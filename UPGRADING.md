@@ -320,6 +320,39 @@ _(Optional narrative paragraph for anything that doesn't fit above.)_
 
 <!-- BEGIN RELEASE NOTES -->
 
+### v0.4.7 — 2026-06-06
+
+The **Telegram surface is removed**. Now that proactive push reaches a
+*closed* iOS app end-to-end via the shared relay (v0.4.6), Telegram was no
+longer load-bearing for any delivery, and maintaining a second full chat
+surface meant every turn-handling, ACL, session, and outbox change had to
+be written and tested twice. The native app is the product; this release
+retires the bridge. Gone: the ~720-line inbound long-poll dispatcher, the
+outbound proactive Telegram fallback rung, the `telegram` cargo feature,
+and the `teloxide` dependency (Cargo.lock shrinks ~640 lines). The
+proactive dispatch ladder is now web → push relay, with no Telegram tail.
+
+**Migrations:** none.
+**Config:** the per-persona Telegram fields (`bot_token`, `allowed_user_ids`,
+`allowed_chat_ids`) and the `[server]` `telegram_bot_api_url` / `edit_throttle_ms`
+keys are no longer read. **You do not need to edit `config.toml`** — parsing
+stays tolerant of these now-unknown keys, so an existing file still loads.
+The proactive recipient field `events_chat_id` is **renamed to
+`primary_chat_id`** (env `<NAME>__PRIMARY_CHAT_ID`); a serde alias and a
+legacy `<NAME>__EVENTS_CHAT_ID` env fallback are kept for **this one
+release**, so a running self-host keeps firing proactive events across the
+upgrade. Migrate your config/env to the new name before the next release.
+**Persona layout:** unchanged.
+**Compose:** the chizzle-server Telegram env (`ASSISTANT__BOT_TOKEN`,
+`TELEGRAM_BOT_API_URL`, `ASSISTANT__ALLOWED_USER_IDS`,
+`ASSISTANT__EVENTS_CHAT_ID`) is removed; the events proactive-recipient
+passthrough is renamed to `ASSISTANT__PRIMARY_CHAT_ID`. If you ran a
+self-hosted `telegram-bot-api` service alongside the stack, remove it and
+its `.env` Telegram block — re-fetch `compose.yml`/`.env.example` (README §3.1).
+**Rollback:** standard §4 procedure. Rolling back to a Telegram-capable
+binary still works — the config keys it expects were never deleted from
+your file.
+
 ### v0.4.6 — 2026-06-06
 
 Turnkey proactive push — a closed iOS app now wakes for a persona's
