@@ -320,6 +320,42 @@ _(Optional narrative paragraph for anything that doesn't fit above.)_
 
 <!-- BEGIN RELEASE NOTES -->
 
+### v0.4.8 — 2026-07-24
+
+**Targeted admin settings** — the `/setup` admin panel gains two narrow
+panels so the common day-two changes no longer mean re-running the whole
+setup wizard.
+
+The motivating failure: a Claude Pro/Max subscription token expires. Every
+agent spawn then fails (`spawn failed: claude exited with status 1` in the
+`events` log) while the server itself looks perfectly healthy — `/health`
+returns `200`, every container is `Up`. Until now the only in-UI recovery
+was *Reconfigure server*, which re-renders `config.toml` wholesale and so
+demanded the admin password and the full persona list just to replace one
+string.
+
+- **Update AI credentials** patches only the `[env]` table and restarts.
+  It writes the provider key you choose and removes the other one, so a
+  superseded credential can't be picked up at spawn time. If the key is
+  set as a real environment variable (compose `environment:`/`.env`, or
+  `fly secrets set`), the route refuses and names where to change it —
+  env beats `config.toml`, so writing the file would have restarted into
+  the same stale credential.
+- **Change admin password** rewrites only the `[setup]` hash. It takes
+  effect immediately with **no restart**, so live chat connections and
+  the proactive engine keep running.
+
+Both preserve personas, pairings, the wakeup secret and any hand-edits to
+`config.toml` byte-for-byte.
+
+**Migrations:** none.
+**Config:** unchanged — no new fields. The new routes edit the existing
+`[env]` and `[setup]` sections in place.
+**Persona layout:** unchanged.
+**Compose:** unchanged.
+**Rollback:** standard §4 procedure. Credentials written by the new panel
+are ordinary `[env]` keys an older binary reads identically.
+
 ### v0.4.7 — 2026-06-06
 
 The **Telegram surface is removed**. Now that proactive push reaches a
