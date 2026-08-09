@@ -320,6 +320,91 @@ _(Optional narrative paragraph for anything that doesn't fit above.)_
 
 <!-- BEGIN RELEASE NOTES -->
 
+### v0.4.11 — 2026-08-09
+
+> v0.4.9 and v0.4.10 were tagged and their images built, but both were
+> withdrawn at the Trivy gate over fixable npm advisories — `nanoid`,
+> then `postcss`. Everything below shipped as v0.4.11; there is no
+> v0.4.9 or v0.4.10 release to upgrade from.
+
+**The main chat becomes a real conversation.** Until now an untagged turn
+was written nowhere — not server-side, not on the device — so there was
+nothing to scroll back to, and past the 30-minute `resume_window` the
+persona restarted from a cold session with no idea what you had been
+talking about. This release makes the main chat a persisted thread
+("home"), gives it segmented scrollback, moves topic exchanges out of it
+into their own threads, seeds a cold session with recent history, and
+rebuilds the inbox around it.
+
+- **Home is a thread.** Every main-chat message persists now, segmented
+  into sessions — a `resume_window` gap or a persona-initiated message
+  opens a new one — and swept to `home_retention_messages`. Home is never
+  a row in the inbox and is not addressable over `thread_request`; the
+  client learns its id from the `ready` frame.
+- **Scrollback is complete.** History pages backwards a page at a time,
+  and attachments, feature cards and the persona's Lottie expression all
+  survive in it. Attachment bytes moved from "shipped once, then deleted"
+  into a per-persona store, so scrolling back past a file still finds it.
+- **A cold session is seeded.** A turn that would otherwise start blind
+  opens with a bracketed transcript of the recent messages, and the
+  persona can call `read_thread` on the new `chizzle` MCP server to reach
+  further back — the main chat, a topic thread by handle, or any thread
+  by id, all scoped to its own binding.
+- **The inbox scales.** Unread marks, pin, archive, and server-side
+  search over message *bodies* rather than just titles. Archiving closes
+  a thread: its topic stops resolving to it, so a persona writing to that
+  topic again opens a fresh thread and the filed one stays filed.
+- **Topic threads claim rather than copy.** `thread.json` gains
+  `claim_last: N`, which *moves* the newest N main-chat messages into the
+  topic thread. The old guidance — restate both sides of the turn in
+  `messages` — now leaves a duplicate behind, because home records the
+  turn on its own; `messages` is for content the persona composes rather
+  than exchanges.
+
+**Fixed: proactive spawns could not write their own outbox.** Cold-open,
+wakeup and event spawns passed `Write` on `--disallowedTools` while their
+prompts asked for `kind.json`, `diary.json`, `app-card.json` and
+`pill.json` — every one of which the caller reads back off disk after the
+process exits. The effects were quiet and long-standing: no cold open
+could ship a card, the diary stayed empty for every proactive spawn, and
+`last_greeting_kind` always read back `habit`, which disabled both the
+once-per-day discovery cap and the profile-question spacing that key off
+it. A model told to write a file it has no tool for narrates the write
+instead, so greetings also picked up stray `*writes kind.json*` prose.
+
+**Security:** two build-toolchain packages are pinned forward through
+`overrides` in both the root and setup-wizard manifests — `nanoid`
+`>= 3.3.18` (CVE-2026-67213, CVE-2026-67214, infinite loops) and
+`postcss` `>= 8.5.26` (GHSA-r28c-9q8g-f849, path traversal via
+`sourceMappingURL` auto-loading). Three further advisories are accepted
+in [`trivy.toml`](../../trivy.toml) — `brace-expansion` ×2 and
+`ip-address` — all in npm's *vendored* copies under
+`/usr/lib/node_modules/npm/`, which no lockfile of ours can move.
+
+**Migrations:** none. Every new thread column (`seq`, `segment_start`,
+`kind`, `payload`, `lottie_slug`, `lottie_mode`, `pinned`, `archived`,
+`read_seq`) is read back as optional, so rows written by an older release
+load unchanged — as text, unpinned, active, and belonging to one long
+opening segment. Home is find-or-created the first time a binding
+connects.
+**Config:** two optional additions, both with working defaults.
+`[server].home_retention_messages` (default 1000, or
+`HOME_RETENTION_MESSAGES`) caps the main chat; `[server].agent_mcp_url`
+points a spawned persona at the `read_thread` verb. The latter requires
+`wakeup_shared_secret` — without one the listener never binds and the
+verb is simply absent, which is a supported configuration.
+**Persona layout:** `<persona>/attachments/` is new — message attachment
+blobs keyed by message `seq`. It sits inside the existing
+`chizzle-personas` volume, so there is nothing new to mount or back up.
+**Compose:** unchanged.
+**Rollback:** standard §4 procedure, with one caveat. An older binary
+ignores the new columns and reads every message as text, so the main chat
+loses its scrollback and topic threads lose the attachments and cards in
+their history — the rows survive, they just render as their text
+descriptor (`[file: chart.png]`). Attachment blobs written under 0.4.9
+are orphaned but harmless. Nothing this release writes stops an older one
+from starting.
+
 ### v0.4.8 — 2026-07-24
 
 **Targeted admin settings** — the `/setup` admin panel gains two narrow
